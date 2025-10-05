@@ -45,6 +45,7 @@ router.get("/:id", async (req, res) => {
         // TODO: ADD PRIVACY CHECK HERE
         // Example: if (!profile.isPublic && profile.user.toString() !== req.user.id) { ... }
         
+        
         res.status(200).json(profile);
     } catch (error) {
         console.error("Error fetching public profile:", error);
