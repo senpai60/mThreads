@@ -28,3 +28,5 @@ yarn.lock
 
 # env files
 .env
+/uploads
+/server/uploads/
