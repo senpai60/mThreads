@@ -3,9 +3,12 @@ var path = require("path");
 var cookieParser = require("cookie-parser");
 var logger = require("morgan");
 
+const cors = require('cors');
+
 // Router and Config
 var indexRouter = require("./routes/index");
 const mongoose = require("mongoose");
+const { networkInterfaces } = require("os");
 require("dotenv").config();
 
 // --- MongoDB Connection Check and Setup ---
@@ -44,8 +47,27 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
+
+// CORS SETUP
+
+const whiteList = ["http://localhost:5173"]; // no trailing slash
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || whiteList.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true, // VERY IMPORTANT for cookies
+};
+
+// Apply globally
+app.use(cors(corsOptions));
+// -----------------
+
 // Route setup (assuming /mthreads is where your index/auth routes live)
-app.use("/mthreads", indexRouter);
+app.use("/mthreads",indexRouter);
 
 // Start Server
 app.listen(process.env.PORT || 5000, () => {
