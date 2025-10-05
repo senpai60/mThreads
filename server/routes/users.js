@@ -9,6 +9,13 @@ const UserSetting = require("../models/Settings");
 const { settings } = require("../app");
 require("dotenv").config();
 
+// Define cookie options outside the routes for clarity (1 hour in ms)
+const cookieOptions = {
+  httpOnly: true,
+  maxAge: 3600000, // 1 hour
+  sameSite: "Lax", // Important for cross-port localhost requests
+};
+
 /* GET users listing. */
 router.post("/register", async (req, res) => {
   const { username, email, password, fullname } = req.body;
@@ -18,11 +25,13 @@ router.post("/register", async (req, res) => {
 
   try {
     const existingUser = await User.findOne({ $or: [{ username }, { email }] });
-    if (existingUser) {   //lline 21
+    if (existingUser) {
+      //lline 21
       return res.status(400).json({ msg: "User already exists" });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = await User.create({ //line 25
+    const newUser = await User.create({
+      //line 25
       username,
       email,
       password: hashedPassword,
@@ -30,14 +39,14 @@ router.post("/register", async (req, res) => {
     });
     const newProfile = await Profile.create({ user: newUser._id, fullname });
     const newSettings = await UserSetting.create({ user: newUser._id });
-  
+
     await newUser.save();
     await newProfile.save();
     await newSettings.save();
     const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-    res.cookie("token", token, { httpOnly: true });
+    res.cookie("token", token, cookieOptions);
     res.status(201).json({
       token,
       user: {
@@ -74,7 +83,7 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-    res.cookie("token", token, { httpOnly: true });
+    res.cookie("token", token, cookieOptions);
     res.status(200).json({
       token,
       user: {
@@ -91,8 +100,15 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.get('/ping', (req, res) => {
-  res.status(200).json({ msg: 'pong' });
+router.get("/ping", (req, res) => {
+  res.status(200).json({ msg: "pong" });
+});
+
+router.post("/logout", (req, res) => {
+  console.log("logout");
+  
+  res.clearCookie("token", { httpOnly: true, sameSite: "Lax" });
+  res.status(200).json({ msg: "Logged out successfully" });
 });
 
 module.exports = router;
