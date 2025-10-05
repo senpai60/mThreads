@@ -1,36 +1,185 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { FaThreads } from "react-icons/fa6";
-import { HiCog6Tooth, HiArrowLeft } from "react-icons/hi2";
+import { HiCog6Tooth, HiArrowLeft, HiOutlinePhoto } from "react-icons/hi2";
 import PostDisplayCard from "../cards/PostDisplayCard";
 import api from "../../../api/ServerApi";
 
+// Base URL for the uploaded profile pictures
+const SERVER_BASE_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:5000";
+
+// --- Utility function to resolve URL ---
+const resolveImageUrl = (url) => {
+    if (!url) return 'https://placehold.co/150x150/0f172a/ffffff?text=PFP';
+    return url.startsWith('http') ? url : SERVER_BASE_URL + url;
+};
+
+// --- Edit Profile Form Component ---
+const EditProfileForm = ({ profile, setIsEditing, onProfileUpdated }) => {
+    const [formData, setFormData] = useState({
+        fullname: profile.fullname,
+        bio: profile.bio,
+    });
+    const [file, setFile] = useState(null);
+    const [previewUrl, setPreviewUrl] = useState(resolveImageUrl(profile.profilePictureUrl));
+    const [isSaving, setIsSaving] = useState(false);
+    const [updateError, setUpdateError] = useState(null);
+
+    const onChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleFileChange = (e) => {
+        const selectedFile = e.target.files[0];
+        setFile(selectedFile);
+        setUpdateError(null);
+        if (selectedFile) {
+            setPreviewUrl(URL.createObjectURL(selectedFile));
+        }
+    };
+
+    const onSubmit = async (e) => {
+        e.preventDefault();
+        setIsSaving(true);
+        setUpdateError(null);
+
+        // 1. Create FormData object for multipart/form-data
+        const data = new FormData();
+        data.append('fullname', formData.fullname);
+        data.append('bio', formData.bio);
+        if (file) {
+            // IMPORTANT: 'dp' must match the field name in uploadMiddleware.single("dp")
+            data.append('dp', file); 
+        }
+
+        try {
+            // 2. Send PUT request to the secured /me endpoint
+            const res = await api.put(`/mthreads/profile/me`, data);
+
+            // 3. Update parent state with the new profile data
+            onProfileUpdated(res.data.profile);
+            setIsEditing(false); // Close the form
+        } catch (err) {
+            console.error("Profile update failed:", err);
+            setUpdateError(err.response?.data?.message || "Failed to update profile.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <div className="w-full px-5 pt-4 bg-zinc-900 rounded-lg pb-6 md:max-w-xl md:mx-auto">
+            <h3 className="text-xl font-bold mb-4 border-b border-zinc-800 pb-2">Edit Profile</h3>
+            <form onSubmit={onSubmit}>
+                {/* Profile Picture Upload */}
+                <div className="flex items-center justify-center mb-6">
+                    <div 
+                        className="w-20 h-20 rounded-full bg-zinc-700 shrink-0 border border-zinc-700/50 relative group"
+                        style={{ backgroundImage: `url(${previewUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+                    >
+                        <input
+                            type="file"
+                            id="dp-upload" // Changed ID to dp-upload
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleFileChange}
+                        />
+                        <label 
+                            htmlFor="dp-upload" // Changed htmlFor to dp-upload
+                            className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full cursor-pointer"
+                            title="Change profile picture"
+                        >
+                            <HiOutlinePhoto className="w-6 h-6 text-white" />
+                        </label>
+                    </div>
+                </div>
+
+                {/* Full Name Input */}
+                <div className="mb-4">
+                    <label className="text-sm text-zinc-400 block mb-1">Full Name</label>
+                    <input
+                        type="text"
+                        name="fullname"
+                        value={formData.fullname}
+                        onChange={onChange}
+                        className="w-full p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        maxLength={100}
+                        required
+                    />
+                </div>
+
+                {/* Bio Input */}
+                <div className="mb-6">
+                    <label className="text-sm text-zinc-400 block mb-1">Bio</label>
+                    <textarea
+                        name="bio"
+                        value={formData.bio}
+                        onChange={onChange}
+                        rows="3"
+                        className="w-full p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white resize-none focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        maxLength={200}
+                    ></textarea>
+                </div>
+
+                {updateError && (
+                    <p className="text-red-500 text-sm mb-4">{updateError}</p>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-3">
+                    <button 
+                        type="button" 
+                        onClick={() => setIsEditing(false)}
+                        className="px-4 py-2 text-sm font-medium rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="submit"
+                        disabled={isSaving}
+                        className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${
+                            isSaving 
+                                ? 'bg-blue-800 text-zinc-400 cursor-not-allowed' 
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }`}
+                    >
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+};
+
+
+// --- Main Profile Component ---
 function Profile({ user }) {
-  // Get ID from URL. It will be undefined if navigating to /profile.
-  const { profileId: urlProfileId } = useParams(); 
+  const { profileId: urlProfileId } = useParams();
   const navigate = useNavigate();
   
-  // State for the profile data being viewed
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isEditing, setIsEditing] = useState(false); 
 
-  // Determine which profile ID to fetch. Defaults to logged-in user's profileId.
   const profileToFetchId = urlProfileId || user?.profileId; 
-  
-  // Core check: Is the profile currently being viewed the logged-in user's profile?
   const isOwnProfile = profileToFetchId === user?.profileId;
 
+  // Handle updates from the Edit form
+  const handleProfileUpdated = (updatedProfile) => {
+    setProfile(updatedProfile);
+  };
+
   useEffect(() => {
+    // Reset editing state whenever the profile changes (e.g., viewing another user)
+    setIsEditing(false); 
+
     const fetchProfile = async () => {
       if (!profileToFetchId) {
-        // Should only happen if user object is null, which is handled by App.jsx
         setLoading(false);
         return;
       }
 
-      // If it's the current user's profile (no URL ID), use the secured /me endpoint.
-      // Otherwise, use the public /:id endpoint.
       const endpoint = isOwnProfile 
         ? `/mthreads/profile/me` 
         : `/mthreads/profile/${profileToFetchId}`;
@@ -42,7 +191,7 @@ function Profile({ user }) {
         setError(null);
       } catch (err) {
         console.error("Failed to fetch profile:", err);
-        setError("Could not load profile. It may not exist or be private.");
+        setError(err.response?.data?.msg || "Could not load profile. It may not exist or be private.");
         setProfile(null);
       } finally {
         setLoading(false);
@@ -70,7 +219,7 @@ function Profile({ user }) {
     );
   }
 
-  // --- Extract data from the fetched profile ---
+  // --- Display Data ---
   const { 
       fullname, 
       bio = 'No bio yet.',
@@ -79,12 +228,21 @@ function Profile({ user }) {
       threadCount = 0 
   } = profile;
   
-  // Note: The username is on the main 'user' object, not the 'profile' object (see server/models/User.js).
-  // We use the logged-in user's username here, which is fine for the owner, but requires another fetch
-  // or joining the Profile/User models on the server side to get the correct username for another user's profile.
-  const displayUsername = isOwnProfile ? user?.username : 'threads_user'; // Placeholder for other user's username
-  
+  const displayUsername = user?.username || "threads_user"; 
+  const fullProfilePictureUrl = resolveImageUrl(profilePictureUrl);
 
+
+  // Render the Edit Form if in editing mode AND it's the user's own profile
+  if (isEditing && isOwnProfile) {
+      // Full screen takeover for editing
+      return (
+        <div className="w-full min-h-dvh bg-zinc-950 pt-20">
+            <EditProfileForm profile={profile} setIsEditing={setIsEditing} onProfileUpdated={handleProfileUpdated} />
+        </div>
+      );
+  }
+
+  // Render the Profile View
   return (
     <div className="w-full min-h-dvh bg-zinc-950 text-zinc-200">
       
@@ -94,11 +252,10 @@ function Profile({ user }) {
         <h1 className="text-lg font-semibold inline">
             {displayUsername} <FaThreads className="inline w-4 h-4 text-zinc-400" />
         </h1>
-        {/* Settings Button (Conditional: Only show if it's the own profile) */}
         {isOwnProfile ? (
           <HiCog6Tooth className="w-6 h-6 cursor-pointer" />
         ) : (
-          <div className="w-6 h-6"></div> // Spacer for alignment
+          <div className="w-6 h-6"></div>
         )}
       </div>
 
@@ -119,14 +276,16 @@ function Profile({ user }) {
             {/* Right: Profile Picture */}
             <div 
               className="profile-pic w-16 h-16 rounded-full bg-zinc-700 shrink-0 border border-zinc-700/50" 
-              style={{ backgroundImage: `url(${profilePictureUrl})`, backgroundSize: 'cover' }}
+              style={{ backgroundImage: `url(${fullProfilePictureUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
             ></div>
           </div>
 
           {/* Conditional Action Buttons */}
           <div className="flex gap-3 mt-4">
-            <button className="flex-1 p-2 border border-zinc-700 rounded-lg text-sm font-medium hover:bg-zinc-800/50 transition">
-              {/* Conditional: Edit Profile vs. Follow */}
+            <button 
+                className="flex-1 p-2 border border-zinc-700 rounded-lg text-sm font-medium hover:bg-zinc-800/50 transition"
+                onClick={() => isOwnProfile && setIsEditing(true)} 
+            >
               {isOwnProfile ? 'Edit Profile' : 'Follow'} 
             </button>
             <button className="flex-1 p-2 border border-zinc-700 rounded-lg text-sm font-medium hover:bg-zinc-800/50 transition">
