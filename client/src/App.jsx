@@ -13,6 +13,8 @@ function App() {
 
   useEffect(() => {
     const loggedInUser = JSON.parse(localStorage.getItem("user"));
+    console.log(loggedInUser);
+    
     if (loggedInUser) {
       setUser(loggedInUser);
     }
@@ -28,7 +30,7 @@ function App() {
             <Route path="/explore" element={<Explore />} />
             <Route path="/addpost" element={<AddPost />} />
             <Route path="/notifications" element={<Notifications />} />
-            <Route path="/profile" element={<Profile user={user}/>} />
+            <Route path="/profile/:profileId?" element={<Profile user={user}/>} />
           </>
         ) : (
           <Route path="*" element={<LoginSignup setUser={setUser} />} />
