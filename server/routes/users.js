@@ -26,23 +26,27 @@ router.post("/register", async (req, res) => {
   try {
     const existingUser = await User.findOne({ $or: [{ username }, { email }] });
     if (existingUser) {
-      //lline 21
       return res.status(400).json({ msg: "User already exists" });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // FIX 1: Removed 'fullname' since it's not in the User model schema
     const newUser = await User.create({
-      //line 25
       username,
       email,
       password: hashedPassword,
-      fullname,
     });
+    
+    // Create linked documents
     const newProfile = await Profile.create({ user: newUser._id, fullname });
     const newSettings = await UserSetting.create({ user: newUser._id });
 
+    // FIX 2: Explicitly link Profile and Settings IDs to the User document
+    newUser.profile = newProfile._id;
+    newUser.settings = newSettings._id;
     await newUser.save();
-    await newProfile.save();
-    await newSettings.save();
+    // No need to call save() on newProfile/newSettings as .create() saves them.
+
     const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });

@@ -45,7 +45,8 @@ app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, "public")));
+// FIX: Serve files from the 'uploads' directory under the virtual path '/uploads'
+app.use('/uploads', express.static(path.join(__dirname, "uploads")));
 
 
 // CORS SETUP
