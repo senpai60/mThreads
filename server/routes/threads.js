@@ -5,19 +5,40 @@ const authMiddleware = require("../middleware/auth");
 const Thread = require("../models/Thread");
 const upload = require("../middleware/upload");
 
-router.get("/", authMiddleware, async (req, res) => {
+router.get("/mythreads", authMiddleware, async (req, res) => {
+  const author = req.user.id;
+
   try {
-    const allThreads = (await Thread.find({ isDeleted: false }))
+    const myThreads = await Thread.find({ author })
       .sort({ createdAt: -1 })
-      .populate({ path: author, select: "username fullname profilePictureUrl" })
+      .populate({ path: "author", select: "username fullname profilePictureUrl" })
       .populate({
-        path: quotes,
+        path: "quotes",
         select: "content author createdAt",
         populate: {
           path: "author",
           select: "username fullname profilePictureUrl",
         },
       });
+
+    return res.status(200).json({ threads: myThreads });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.get("/", authMiddleware, async (req, res) => {
+  try {
+    const allThreads = await Thread.find({ isDeleted: false })
+  .sort({ createdAt: -1 }) // <-- works because it's on the query
+  .populate({ path: "author", select: "username fullname profilePictureUrl" })
+  .populate({
+    path: "quotes",
+    select: "content author createdAt",
+    populate: { path: "author", select: "username fullname profilePictureUrl" },
+  });
+
 
     return res.status(200).json({ threads: allThreads });
   } catch (err) {

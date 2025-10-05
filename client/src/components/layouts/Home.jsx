@@ -4,8 +4,24 @@ import { FaThreads } from "react-icons/fa6";
 import PostDisplayCard from "../cards/PostDisplayCard";
 import api from "../../../api/ServerApi";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useState } from "react";
 
 function Home() {
+
+  const [threads, setThreads] = useState([]);
+  useEffect(() => {
+    const fetchThreads = async () => {
+      try {
+        const res = await api.get("/mthreads/threads");
+        setThreads(res.data.threads);
+        console.log(res.data.threads);
+      } catch (err) {
+        console.error("Failed to fetch threads:", err);
+      }
+    };
+    fetchThreads();
+  }, []);
   const navigate = useNavigate();
   const handleLogout = async () => {
     try {
@@ -36,9 +52,13 @@ function Home() {
             Logout
           </button>
         </div>
-
-        <PostDisplayCard />
-        <PostDisplayCard />
+        {threads && threads.length > 0 ? (
+          threads.map((thread) => (
+            <PostDisplayCard key={thread._id} thread={thread} author={thread.author}/>
+          ))
+        ) : (
+          <p className="text-zinc-500 mt-6">No posts yet.</p>
+        )}
       </div>
     </div>
   );
