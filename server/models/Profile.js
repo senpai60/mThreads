@@ -22,6 +22,12 @@ const ProfileSchema = new Schema({
         trim: true,
         maxLength: 100,
     },
+    username: {
+        type: String,
+        required: true,
+        trim: true,
+        maxLength: 100,
+    },
     bio: {
         type: String,
         default: '',

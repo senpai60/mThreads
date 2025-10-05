@@ -38,7 +38,7 @@ router.post("/register", async (req, res) => {
     });
     
     // Create linked documents
-    const newProfile = await Profile.create({ user: newUser._id, fullname });
+    const newProfile = await Profile.create({ user: newUser._id, fullname,username});
     const newSettings = await UserSetting.create({ user: newUser._id });
 
     // FIX 2: Explicitly link Profile and Settings IDs to the User document

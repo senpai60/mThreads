@@ -37,7 +37,7 @@ function App() {
           <>
             <Route path="/" element={<Home />} />
             <Route path="/explore" element={<Explore />} />
-            <Route path="/addpost" element={<AddPost />} />
+            <Route path="/addpost" element={<AddPost user={user} />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/profile/:profileId?" element={<Profile user={user} />} />
             {/* Redirect all other routes to home */}
