@@ -1,3 +1,5 @@
+// File: senpai60/mthreads/.../client/src/components/layouts/Home.jsx
+
 import React from "react";
 import { FaThreads } from "react-icons/fa6";
 
@@ -8,7 +10,6 @@ import { useEffect } from "react";
 import { useState } from "react";
 
 function Home() {
-
   const [threads, setThreads] = useState([]);
   useEffect(() => {
     const fetchThreads = async () => {
@@ -53,8 +54,13 @@ function Home() {
           </button>
         </div>
         {threads && threads.length > 0 ? (
-          threads.map((thread) => (
-            <PostDisplayCard key={thread._id} thread={thread} author={thread.author}/>
+          threads.map((thread, index) => (
+            <div
+              key={thread._id}
+              className={`${index === threads.length - 1 ? "mb-15" : "mb-0"}`}
+            >
+              <PostDisplayCard thread={thread} />
+            </div>
           ))
         ) : (
           <p className="text-zinc-500 mt-6">No posts yet.</p>
