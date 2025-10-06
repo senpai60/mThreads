@@ -3,6 +3,8 @@
 import React, { useRef, useState, useEffect } from "react";
 import { ImHeart } from "react-icons/im";
 
+import api from "../../../api/ServerApi";
+
 // FIX APPLIED: 'author' prop removed from signature
 function PostDisplayCard({ thread }) {
   const serverUrl = import.meta.env.VITE_SERVER_URL;
@@ -11,10 +13,18 @@ function PostDisplayCard({ thread }) {
   const carouselRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(thread.likes?.length || 0);
+
   const mediaCount = thread?.mediaUrls?.length || 0;
 
   // Track which image is currently in view
   useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (user && thread.likes.includes(user.id)) {
+      setLiked(true);
+    }
+
     const el = carouselRef.current;
     if (!el) return;
 
@@ -27,7 +37,30 @@ function PostDisplayCard({ thread }) {
 
     el.addEventListener("scroll", onScroll);
     return () => el.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [thread]);
+
+  // LikeFunction
+  const likeThread = async () => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user) return;
+
+    // instant visual feedback before waiting for backend
+    setLiked((prev) => !prev);
+    setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
+    try {
+      const res = await api.post("/mthreads/threads/like", {
+        threadId: thread._id,
+      });
+      if (res.data.succes) {
+        setLiked(res.data.liked);
+        setLikeCount(res.data.likeCount);
+      }
+    } catch (err) {
+      console.error("Error liking thread:", err);
+    }
+  };
+  const commentThread = () => {};
+  const shareThread = () => {};
 
   // FIX: New variable for DP URL using the nested path
   const fullProfilePictureUrl = thread?.author?.profile?.profilePictureUrl
@@ -213,21 +246,14 @@ function PostDisplayCard({ thread }) {
 
           {/* Post Footer */}
           <div className="post-footer flex justify-between items-center mt-10">
-            <button className="like-button text-zinc-400 hover:text-zinc-200 ">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="lucide lucide-heart-icon lucide-heart"
-              >
-                <path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5" />
-              </svg>
+            <button
+              onClick={likeThread}
+              className={`like-button transition text-zinc-400 hover:text-zinc-200 ${
+                liked ? "text-red-500" : ""
+              }`}
+            >
+              <ImHeart />
+              <span className="ml-1 text-sm">{likeCount}</span>
             </button>
 
             <button className="comment-button text-zinc-400 hover:text-zinc-200">
